@@ -38,6 +38,7 @@ class SedModel(ProspectorParams):
         :returns extras:
             Any extra aspects of the model that are returned.
         """
+        # print('HJD: mean_model: theta => {}'.format(theta))
         s, p, x = self.sed(theta, obs, sps=sps, **extras)
         self._speccal = self.spec_calibration(obs=obs, **extras)
         if obs.get('logify_spectrum', False):
@@ -69,7 +70,7 @@ class SedModel(ProspectorParams):
         :returns extras:
             Any extra aspects of the model that are returned.
         """
-
+        # print('HJD: sed: theta => {}'.format(theta))
         self.set_parameters(theta)
         spec, phot, extras = sps.get_spectrum(outwave=obs['wavelength'],
                                               filters=obs['filters'],
@@ -162,7 +163,7 @@ class PolySedModel(SedModel):
             self.set_parameters(theta)
 
         polyopt = ((self.params.get('polyorder', 0) > 0) &
-                   (obs.get('spectrum', None) is not None)) 
+                   (obs.get('spectrum', None) is not None))
         if polyopt:
             order = self.params['polyorder']
             mask = obs.get('mask', slice(None))

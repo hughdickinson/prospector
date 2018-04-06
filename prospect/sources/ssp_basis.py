@@ -154,7 +154,7 @@ class SSPBasis(object):
             maggies.
 
         :param filters: (default: None)
-            A list of filter objects for which you'd like photometry to be calculated. 
+            A list of filter objects for which you'd like photometry to be calculated.
 
         :param **params:
             Optional keywords giving parameter values that will be used to

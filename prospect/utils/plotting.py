@@ -63,7 +63,8 @@ def get_percentiles(res, ptile=[16, 50, 84], start=0.5, thin=10, **extras):
        requested percentiles for that parameter.
     """
     nw, niter = res['chain'].shape[:-1]
-    parnames = np.array(res.get('theta_labels', res['model'].theta_labels()))
+    # parnames = np.array(res.get('theta_labels', res['model'].theta_labels()))
+    parnames = np.array(res['theta_labels'])
     start_index = np.floor(start * (niter-1)).astype(int)
     flatchain = res['chain'][:, start_index::thin, :]
     dims = flatchain.shape

@@ -1,14 +1,25 @@
+from __future__ import print_function
+
+import json
+import pickle
 from copy import deepcopy
+
 import numpy as np
-import json, pickle
+
 from . import priors
 from ..utils.obsutils import logify_data, norm_spectrum
 
 __all__ = ["ProspectorParams", "ProspectorParamsHMC"]
 
-param_template = {'name': '', 'N': 1, 'isfree': False,
-                  'init': 0.0, 'units': '',
-                  'prior_function': None, 'prior_args': None}
+param_template = {
+    'name': '',
+    'N': 1,
+    'isfree': False,
+    'init': 0.0,
+    'units': '',
+    'prior_function': None,
+    'prior_args': None
+}
 
 
 class ProspectorParams(object):
@@ -16,6 +27,7 @@ class ProspectorParams(object):
     :param config_list:
         A list of ``model parameters``.
     """
+
     # information about each parameter stored as a list
     # config_list = []
     # information about each parameter as a dictionary keyed by
@@ -38,6 +50,11 @@ class ProspectorParams(object):
         self.config_list = config_list
         self.configure()
         self.verbose = verbose
+        # print(self.theta_labels())
+        # self.infinitePriorValCount = {
+        #     label: 0
+        #     for label in self.theta_labels()
+        # }
 
     def configure(self, reset=False, **kwargs):
         """Use the parameter config_list to generate a theta_index mapping, and
@@ -64,7 +81,7 @@ class ProspectorParams(object):
             self.params[par] = np.atleast_1d(info['init'])
             try:
                 self._config_dict[par]['prior'] = info['prior_function']
-            except(KeyError):
+            except (KeyError):
                 pass
             if info.get('depends_on', None) is not None:
                 self._has_parameter_dependencies = True
@@ -72,7 +89,8 @@ class ProspectorParams(object):
         for k, v in list(kwargs.items()):
             self.params[k] = np.atleast_1d(v)
         # store these initial values
-        self.initial_theta = self.theta.copy()  # self.rectify_theta((self.theta.copy()))
+        # self.rectify_theta((self.theta.copy()))
+        self.initial_theta = self.theta.copy()
 
     def map_theta(self):
         """Construct the mapping from parameter name to the index in the theta
@@ -81,7 +99,8 @@ class ProspectorParams(object):
         self.theta_index = {}
         count = 0
         for par in self.free_params:
-            self.theta_index[par] = slice(count, count+self._config_dict[par]['N'])
+            self.theta_index[par] = slice(count,
+                                          count + self._config_dict[par]['N'])
             count += self._config_dict[par]['N']
         self.ndim = count
 
@@ -125,15 +144,37 @@ class ProspectorParams(object):
             parameter values.
         """
         lnp_prior = 0
+        # print('_prior_product: {}\n\n{}'.format(
+        #     self.theta_index, self._config_dict))
         for k, inds in list(self.theta_index.items()):
-            
-            func = self._config_dict[k]['prior']
-            kwargs = self._config_dict[k].get('prior_args', {})
-            this_prior = np.sum(func(theta[..., inds], **kwargs), axis=-1)
 
-            #if (not np.isfinite(this_prior)):
-            #    print('WARNING: ' + k + ' is out of bounds')
+            func = self._config_dict[k]['prior']
+            prior_deps = {
+                parname: theta[self.theta_index[parname]]
+                for parname in self._config_dict[k].get(
+                    'prior_dependencies', [])
+            }
+            kwargs = self._config_dict[k].get('prior_args', {})
+            kwargs.update(prior_deps)
+            # print('kwargs => {}'.format(kwargs))
+            this_prior = np.sum(func(theta[..., inds], **kwargs), axis=-1)
+            if (not np.isfinite(this_prior)):
+                if verbose:
+                    print('WARNING: Prior for ' + k +
+                          ' is not finite: {}'.format(this_prior))
+                # self.infinitePriorValCount[k] += 1
+                return this_prior
+
             lnp_prior += this_prior
+
+        # infPriorMessages = [
+        #     '{} infinite prior evaluations for {}.'.format(count, label)
+        #     for label, count in self.infinitePriorValCount.items() if count > 0
+        # ]
+        #
+        # if len(infPriorMessages) > 0:
+        #     print(*infPriorMessages, sep='\n')
+
         return lnp_prior
 
     def prior_transform(self, unit_coords):
@@ -155,6 +196,7 @@ class ProspectorParams(object):
             return
         for p, info in list(self._config_dict.items()):
             if 'depends_on' in info:
+                # print('propagating dependencies on {} for {} using {}'.format(info['depends_on'], p, self.params))
                 value = info['depends_on'](**self.params)
                 self.params[p] = np.atleast_1d(value)
 
@@ -178,19 +220,25 @@ class ProspectorParams(object):
     def free_params(self):
         """A list of the free model parameters.
         """
-        return [k['name'] for k in pdict_to_plist(self.config_list)
-                if k['isfree']]
+        return [
+            k['name'] for k in pdict_to_plist(self.config_list) if k['isfree']
+        ]
 
     @property
     def fixed_params(self):
         """A list of the fixed model parameters that are specified in the
         ``model_params``.
         """
-        return [k['name'] for k in pdict_to_plist(self.config_list)
-                if (k['isfree'] is False)]
+        return [
+            k['name'] for k in pdict_to_plist(self.config_list)
+            if (k['isfree'] is False)
+        ]
 
-    def theta_labels(self, name_map={'amplitudes': 'A',
-                                     'emission_luminosity': 'eline'}):
+    def theta_labels(self,
+                     name_map={
+                         'amplitudes': 'A',
+                         'emission_luminosity': 'eline'
+                     }):
         """Using the theta_index parameter map, return a list of the model
         parameter names that has the same order as the sampling chain array.
 
@@ -207,18 +255,18 @@ class ProspectorParams(object):
             nt = inds.stop - inds.start
             try:
                 name = name_map[p]
-            except(KeyError):
+            except (KeyError):
                 name = p
             if nt is 1:
                 label.append(name)
                 index.append(inds.start)
             else:
                 for i in range(nt):
-                    label.append(name+'_{0}'.format(i+1))
-                    index.append(inds.start+i)
+                    label.append(name + '_{0}'.format(i + 1))
+                    index.append(inds.start + i)
         return [l for (i, l) in sorted(zip(index, label))]
 
-    #def write_json(self, filename):
+    # def write_json(self, filename):
     #    pass
 
     def theta_bounds(self):
@@ -233,12 +281,13 @@ class ProspectorParams(object):
             kwargs = self._config_dict[p].get('prior_args', {})
             try:
                 pb = self._config_dict[p]['prior'].bounds(**kwargs)
-            except(AttributeError):
+            except (AttributeError):
                 # old style
                 pb = priors.plotting_range(self._config_dict[p]['prior_args'])
             bounds[inds, :] = np.array(pb).T
         # Force types ?
-        bounds = [(np.atleast_1d(a)[0], np.atleast_1d(b)[0]) for a, b in bounds]
+        bounds = [(np.atleast_1d(a)[0], np.atleast_1d(b)[0])
+                  for a, b in bounds]
         return bounds
 
     def theta_disps(self, default_disp=0.1, fractional_disp=False):
@@ -395,6 +444,6 @@ def functions_to_names(p):
         if callable(v):
             try:
                 p[k] = [v.__name__, v.__module__]
-            except(AttributeError):
+            except (AttributeError):
                 p[k] = pickle.dumps(v, protocol=2)
     return p
