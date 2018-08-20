@@ -4,15 +4,11 @@ from copy import deepcopy
 
 from .ssp_basis import SSPBasis
 from ..utils.smoothing import smoothspec
-from sedpy.observate import getSED, vac2air, air2vac
-from .constants import lightspeed, jansky_cgs, to_cgs_at_10pc
+from .constants import cosmo, lightspeed, jansky_cgs, to_cgs_at_10pc
 
 try:
     import fsps
-except(ImportError):
-    pass
-try:
-    from astropy.cosmology import WMAP9 as cosmo
+    from sedpy.observate import getSED, vac2air, air2vac
 except(ImportError):
     pass
 
@@ -25,13 +21,15 @@ to_cgs = to_cgs_at_10pc
 
 class CSPSpecBasis(SSPBasis):
 
-    """A class for combinations of N composite stellar populations (including
-    single-age populations). The number of composite stellar populations is
-    given by the length of the `mass` parameter.
+    """A subclass of :py:class:`SSPBasis` for combinations of N composite
+    stellar populations (including single-age populations). The number of
+    composite stellar populations is given by the length of the ``"mass"``
+    parameter. Other population properties can also be vectors of the same
+    length as ``"mass"`` if they are independent for each component.
     """
 
-    def __init__(self, compute_vega_mags=False, zcontinuous=1, vactoair_flag=False,
-                 reserved_params=['zred', 'sigma_smooth'], **kwargs):
+    def __init__(self, zcontinuous=1, reserved_params=['zred', 'sigma_smooth'],
+                 vactoair_flag=False, compute_vega_mags=False, **kwargs):
 
         # This is a StellarPopulation object from fsps
         self.ssp = fsps.StellarPopulation(compute_vega_mags=compute_vega_mags,
@@ -124,14 +122,13 @@ class CSPSpecBasis(SSPBasis):
 
 class MultiComponentCSPBasis(CSPSpecBasis):
 
-
-    """Similar to CSPSpecBasis, a class for combinations of N composite stellar
+    """Similar to :py:class`CSPSpecBasis`, a class for combinations of N composite stellar
     populations (including single-age populations). The number of composite
     stellar populations is given by the length of the `mass` parameter.
 
     However, in MultiComponentCSPBasis the SED of the different components are
     tracked, and in get_spectrum() photometry can be drawn from a given
-    component
+    component or from the sum.
     """
     
     def get_galaxy_spectrum(self, **params):

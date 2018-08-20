@@ -3,22 +3,28 @@ Prospector
 Conduct principled inference of stellar population properties from photometric
 and/or spectroscopic data.  Prospector allows you to:
 
+* Infer high-dimensional stellar population properties using parameteric or nonparametric SFHs
+  (with nested or ensemble MCMC sampling)
+
+* Use spectra and/or photometry to constrain the linear combination of stellar population
+  components that are present in a galaxy (i.e. non-parametric SFHs).
+
 * Combine photometric and spectroscopic data rigorously using a flexible
   spectroscopic calibration model.
 
-* Infer high-dimensional stellar population properties using parameteric SFHs
-  (with ensemble MCMC sampling)
-
-* Use spectra and/or photometry to constrain the linear combination of stellar population
-  components that are present in a galaxy (e.g. non-parametric SFHs).
-
-* Fit individual stellar spectra using large (in both n and d) interpolated
-  grids, or polynomial spectral interpolators (coming soon).
-
 * Forward model many aspects of spectroscopic data analysis and
   calibration, including spectrophotometric calibration, sky emission (coming soon),
-  and wavelength solution (coming soon), thus properly incorporating uncertainties
+  and wavelength solution, thus properly incorporating uncertainties
   in these components in the final  parameter uncertainties.
+
+Read the documentation [here](http://prospect.readthedocs.io/en/latest/).
+
+Example
+-------
+Inference with mock broadband data, showing the change in posteriors as the
+number of photometric bands is increased.
+![Demonstration of posteriro inference with increasing number of photometric bands](doc/images/animation.gif)
+
 
 Installation
 ------
@@ -36,18 +42,23 @@ import prospect
 
 Prospector is pure python.
 See [installation](doc/installation.rst) for requirements.
-Other files in the [doc/](doc/) directory explain the usage of the code.
+Other files in the [doc/](doc/) directory explain the usage of the code,
+and you can read the documentation [here](http://prospect.readthedocs.io/en/latest/).
 
-See also the [tutorial](demo/tutorial.rst), the [interactive demo](demo/InteractiveDemo.ipynb),
-or the [deconstructed demo](demo/DeconstructedDemo.ipynb) for fitting photometric data with composite stellar populations.
+See also the [tutorial](demo/tutorial.rst), the [demo notebook](demo/NestedDemo.ipynb),
+or the [deconstructed demo](demo/DeconstructedDemo.ipynb)
+for fitting photometric data with composite stellar populations.
+
+
 
 
 Citation
 ------
-If you use this code, please reference the doi below, and make sure to cite the dependencies as listed in [installation](doc/installation.rst)
+If you use this code, please reference the doi below,
+and make sure to cite the dependencies as listed in [installation](doc/installation.rst)
 [![DOI](https://zenodo.org/badge/10490445.svg)](https://zenodo.org/badge/latestdoi/10490445)
 
-You might also cite:
+You should also cite:
 ```
 @article{2017ApJ...837..170L,
    author = {{Leja}, J. and {Johnson}, B.~D. and {Conroy}, C. and {van Dokkum}, P.~G. and {Byler}, N.},

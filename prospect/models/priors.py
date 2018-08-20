@@ -3,8 +3,7 @@
 import numpy as np
 import scipy.stats
 
-__all__ = ["normal", "tophat", "normal_clipped", "lognormal", "logarithmic",
-           "plotting_range",
+__all__ = ["plotting_range",
            "Prior", "TopHat", "Normal", "ClippedNormal",
            "LogNormal", "LogUniform", "Beta"]
 
@@ -77,13 +76,22 @@ def plotting_range(prior_args):
 class Prior(object):
     """Encapsulate the priors in an object.  Each prior should have a
     distribution name and optional parameters specifying scale and location
-    (e.g. min/max or mean/sigma).  These can be aliased. When called, the
-    argument should be a variable and it should return the ln-prior-probability
-    of that value.
+    (e.g. min/max or mean/sigma).  These can be aliased at instantiation using
+    the ``parnames`` keyword. When called, the argument should be a variable
+    and the object should return the ln-prior-probability of that value.
+
+    .. code-block:: python
+        
+        ln_prior_prob = Prior()(value)
 
     Should be able to sample from the prior, and to get the gradient of the
     prior at any variable value.  Methods should also be avilable to give a
     useful plotting range and, if there are bounds, to return them.
+
+    :param parnames:
+        A list of names of the parameters, used to alias the intrinsic
+        parameter names.  This way different instances of the same Prior can
+        have different parameter names, in case they are being fit for....
     """
 
     def __init__(self, parnames=[], name='', **kwargs):
@@ -103,6 +111,10 @@ class Prior(object):
         self.name = name
         self.update(**kwargs)
 
+    def __repr__(self):
+        argstring = ['{}={}'.format(k, v) for k, v in list(self.params.items())] 
+        return '{}({})'.format(self.__class__, ",".join(argstring))
+
     def update(self, **kwargs):
         """Update `params` values using alias.
         """
@@ -111,6 +123,7 @@ class Prior(object):
                 self.params[k] = kwargs[self.alias[k]]
             except(KeyError):
                 pass
+        # FIXME: Should add a check for unexpected kwargs.
 
     def __len__(self):
         """The length is set by the maximum size of any of the prior_params.
@@ -210,7 +223,14 @@ class Prior(object):
 
 
 class TopHat(Prior):
+    """A simple uniform prior, described by two parameters
 
+    :param mini:
+        Minimum of the distribution
+
+    :param maxi:
+        Maximum of the distribution
+    """
     prior_params = ['mini', 'maxi']
     distribution = scipy.stats.uniform
 
@@ -234,8 +254,14 @@ class TopHat(Prior):
 
 class Normal(Prior):
     """A simple gaussian prior.
-    """
 
+
+    :param mean:
+        Mean of the distribution
+
+    :param sigma:
+        Standard deviation of the distribution
+    """
     prior_params = ['mean', 'sigma']
     distribution = scipy.stats.norm
 
@@ -261,8 +287,19 @@ class Normal(Prior):
 
 class ClippedNormal(Prior):
     """A Gaussian prior clipped to some range.
-    """
 
+    :param mean:
+        Mean of the normal distribution
+
+    :param sigma:
+        Standard deviation of the normal distribution
+
+    :param mini:
+        Minimum of the distribution
+
+    :param maxi:
+        Maximum of the distribution
+    """
     prior_params = ['mean', 'sigma', 'mini', 'maxi']
     distribution = scipy.stats.truncnorm
 
@@ -291,10 +328,15 @@ class ClippedNormal(Prior):
 
 
 class LogUniform(Prior):
-    """Like log-normal, but the distribution of ln of the variable is
+    """Like log-normal, but the distribution of natural log of the variable is
     distributed uniformly instead of normally.
-    """
 
+    :param mini:
+        Minimum of the distribution
+
+    :param maxi:
+        Maximum of the distribution
+    """
     prior_params = ['mini', 'maxi']
     distribution = scipy.stats.reciprocal
 
@@ -316,8 +358,17 @@ class LogUniform(Prior):
 
 class Beta(Prior):
     """A Beta distribution.
-    """
 
+    :param mini:
+        Minimum of the distribution
+
+    :param maxi:
+        Maximum of the distribution
+
+    :param alpha:
+
+    :param beta:
+    """
     prior_params = ['mini', 'maxi', 'alpha', 'beta']
     distribution = scipy.stats.beta
 
@@ -346,18 +397,155 @@ class Beta(Prior):
 
 
 class LogNormal(Prior):
+    """A log-normal prior, where the natural log of the variable is distributed
+    normally.  Useful for parameters that cannot be less than zero.
 
+    Note that ``LogNormal(np.exp(mode) / f) == LogNormal(np.exp(mode) * f)``
+    and ``f = np.exp(sigma)`` corresponds to "one sigma" from the peak.
+
+    :param mode:
+        Natural log of the variable value at which the probability density is
+        highest.
+
+    :param sigma:
+        Standard deviation of the distribution of the natural log of the
+        variable.
+    """
     prior_params = ['mode', 'sigma']
     distribution = scipy.stats.lognorm
 
     @property
     def args(self):
-        pass
+        return [self.params["sigma"]]
 
     @property
     def scale(self):
-        pass
+        return  np.exp(self.params["mode"] + self.params["sigma"]**2)
 
     @property
     def loc(self):
-        pass
+        return 0
+
+    @property
+    def range(self):
+        nsig = 4
+        return (np.exp(self.params['mode'] + (nsig * self.params['sigma'])),
+                np.exp(self.params['mode'] - (nsig * self.params['sigma'])))
+
+    def bounds(self, **kwargs):
+        return (0, np.inf)
+
+
+class LogNormalLinpar(Prior):
+    """A log-normal prior, where the natural log of the variable is distributed
+    normally.  Useful for parameters that cannot be less than zero.
+
+    LogNormal(mode=x, sigma=y) is equivalent to
+    LogNormalLinpar(mode=np.exp(x), sigma_factor=np.exp(y))
+
+    :param mode:
+        The (linear) value of the variable where the probability density is
+        highest. Must be > 0.
+
+    :param sigma_factor:
+        The (linear) factor describing the dispersion of the log of the
+        variable.  Must be > 0
+    """
+    prior_params = ['mode', 'sigma_factor']
+    distribution = scipy.stats.lognorm
+
+    @property
+    def args(self):
+        return [np.log(self.params["sigma_factor"])]
+
+    @property
+    def scale(self):
+        k = self.params["sigma_factor"]**np.log(self.params["sigma_factor"])
+        return  self.params["mode"] * k
+
+    @property
+    def loc(self):
+        return 0
+
+    @property
+    def range(self):
+        nsig = 4
+        return (self.params['mode'] * (nsig * self.params['sigma_factor']),
+                self.params['mode'] /  (nsig * self.params['sigma_factor']))
+
+    def bounds(self, **kwargs):
+        return (0, np.inf)
+
+class SkewNormal(Prior):
+    """A normal distribution including a skew parameter
+
+    :param location:
+        Center (*not* mean, mode, or median) of the distribution. 
+        The center will approach the mean as skew approaches zero.
+
+    :param sigma:
+        Standard deviation of the distribution
+
+    :param skew:
+        Skewness of the distribution
+    """
+    prior_params = ['location', 'sigma', 'skew']
+    distribution = scipy.stats.skewnorm
+
+    @property
+    def args(self):
+        return [self.params['skew']]
+
+    @property
+    def scale(self):
+        return self.params['sigma']
+
+    @property
+    def loc(self):
+        return self.params['location']
+
+    @property
+    def range(self):
+        nsig = 4
+        return (self.params['location'] - nsig * self.params['sigma'],
+                self.params['location'] + nsig * self.params['sigma'])
+
+    def bounds(self, **kwargs):
+        return (-np.inf, np.inf)
+
+
+class StudentT(Prior):
+    """A Student's T distribution
+
+    :param mean:
+        Mean of the distribution
+
+    :param scale:
+        Size of the distribution, analogous to the standard deviation
+
+    :param df:
+        Number of degrees of freedom
+    """
+    prior_params = ['mean', 'scale', 'df']
+    distribution = scipy.stats.t
+
+    @property
+    def args(self):
+        return [self.params['df']]
+
+    @property
+    def scale(self):
+        return self.params['scale']
+
+    @property
+    def loc(self):
+        return self.params['mean']
+
+    @property
+    def range(self):
+        nsig = 4
+        return (self.params['location'] - nsig * self.params['scale'],
+                self.params['location'] + nsig * self.params['scale'])
+
+    def bounds(self, **kwargs):
+        return (-np.inf, np.inf)

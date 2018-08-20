@@ -1,10 +1,15 @@
 import numpy as np
 
+try:
+    from astropy.cosmology import WMAP9 as cosmo
+except(ImportError):
+    cosmo = None
+
 __all__ = ['lsun', 'pc', 'lightspeed', 'ckms',
            'jansky_mks', 'jansky_cgs',
            'to_cgs_at_10pc', 'loge',
-           'kboltz', 'hplanck']
-
+           'kboltz', 'hplanck',
+           'cosmo']
 
 # Useful constants
 lsun = 3.846e33  # erg/s

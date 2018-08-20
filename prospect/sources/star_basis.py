@@ -4,7 +4,6 @@ from numpy.polynomial.chebyshev import chebval
 from scipy.spatial import Delaunay
 
 from ..utils.smoothing import smoothspec
-from sedpy.observate import getSED, vac2air, air2vac
 from .constants import lightspeed, lsun, jansky_cgs, to_cgs_at_10pc
 
 try:
@@ -12,6 +11,12 @@ try:
 except(ImportError):
     from scipy.spatial import cKDTree as KDTree
 
+try:
+    from sedpy.observate import getSED, vac2air, air2vac
+except(ImportError):
+    pass
+
+    
 __all__ = ["StarBasis", "BigStarBasis"]
 
 
@@ -401,9 +406,7 @@ class BigStarBasis(StarBasis):
         the spacings need not be equal along a given dimension).
 
         :param libname:
-            Path to the hdf5 file to use for the spectral library. Must have
-            "ckc" or "ykc" in the filename (to specify which kind of loader to
-            use)
+            Path to the hdf5 file to use for the spectral library.
 
         :param n_neighbors: (default:0)
             Number of nearest neighbors to use when requested parameters are
